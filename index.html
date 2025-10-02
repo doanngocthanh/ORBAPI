@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORB Image Alignment API Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-box:hover {
+            border-color: #2196F3;
+            background-color: #f8f9ff;
+        }
+
+        .upload-box.dragover {
+            border-color: #2196F3;
+            background-color: #e3f2fd;
+        }
+
+        .upload-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #2196F3;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: #1976D2;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .process-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .process-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .result-item h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .stats {
+            background: #e8f5e8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .stats h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            color: #2e7d32;
+            margin-top: 5px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 ORB Image Alignment API</h1>
+            <p>Thử nghiệm API alignment ảnh sử dụng ORB features</p>
+        </div>
+
+        <div class="content">
+            <div class="upload-section">
+                <div class="upload-box" onclick="document.getElementById('templateFile').click()">
+                    <h3>📋 Ảnh Template (Base)</h3>
+                    <input type="file" id="templateFile" accept="image/*" onchange="previewImage(this, 'templatePreview')">
+                    <button class="upload-btn">Chọn ảnh template</button>
+                    <div id="templatePreview"></div>
+                </div>
+
+                <div class="upload-box" onclick="document.getElementById('targetFile').click()">
+                    <h3>🎯 Ảnh Target</h3>
+                    <input type="file" id="targetFile" accept="image/*" onchange="previewImage(this, 'targetPreview')">
+                    <button class="upload-btn">Chọn ảnh target</button>
+                    <div id="targetPreview"></div>
+                </div>
+            </div>
+
+            <div class="process-section">
+                <button class="process-btn" id="processBtn" onclick="processImages()">
+                    🚀 Thực hiện Alignment
+                </button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Đang xử lý alignment... Vui lòng chờ</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+
+            <div class="results" id="results">
+                <h2 style="text-align: center; color: #333; margin-bottom: 20px;">📊 Kết quả Alignment</h2>
+                
+                <div class="result-grid">
+                    <div class="result-item">
+                        <h3>🔧 Ảnh đã Aligned</h3>
+                        <img id="alignedImage" class="result-image" alt="Aligned Image">
+                    </div>
+                    
+                    <div class="result-item">
+                        <h3>🔍 Visualization Features</h3>
+                        <img id="visualizationImage" class="result-image" alt="Visualization">
+                    </div>
+                    
+                    <div class="result-item">
+                        <h3>📋 So sánh Before/After</h3>
+                        <img id="comparisonImage" class="result-image" alt="Comparison">
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="process-btn" id="scanBtn" style="background: linear-gradient(45deg, #ff9800, #ffc107);" onclick="scanAlignedImage()">
+                        📑 Lấy kết quả Scan CCCD từ ảnh đã Alignment
+                    </button>
+                </div>
+                <div id="scanResult" style="display:none; margin-top: 25px;">
+                    <h3 style="color: #ff9800; text-align: center;">Kết quả Scan CCCD</h3>
+                    <pre id="scanResultContent" style="background: #f5f5f5; border-radius: 8px; padding: 18px; overflow-x: auto; font-size: 1em;"></pre>
+                </div>
+                <script>
+                async function scanAlignedImage() {
+                    const scanBtn = document.getElementById('scanBtn');
+                    const scanResultDiv = document.getElementById('scanResult');
+                    const scanResultContent = document.getElementById('scanResultContent');
+                    scanBtn.disabled = true;
+                    scanBtn.textContent = 'Đang gửi ảnh...';
+
+                    // Lấy ảnh đã alignment từ thẻ img
+                    const alignedImg = document.getElementById('alignedImage');
+                    if (!alignedImg.src || !alignedImg.src.startsWith('data:image')) {
+                        alert('Chưa có ảnh đã alignment!');
+                        scanBtn.disabled = false;
+                        scanBtn.textContent = '📑 Lấy kết quả Scan CCCD từ ảnh đã Alignment';
+                        return;
+                    }
+
+                    // Chuyển base64 sang Blob
+                    function dataURLtoBlob(dataurl) {
+                        const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+                        for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+                        return new Blob([u8arr], { type: mime });
+                    }
+                    const blob = dataURLtoBlob(alignedImg.src);
+
+                    // Gửi ảnh qua API scan
+                    const formData = new FormData();
+                    formData.append('image_file', blob, 'aligned.jpg');
+
+                    try {
+                        const resp = await fetch('http://10.160.50.50:8082/api/scan/', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await resp.json();
+                        scanResultDiv.style.display = 'block';
+                        scanResultContent.textContent = JSON.stringify(data, null, 2);
+                    } catch (e) {
+                        scanResultDiv.style.display = 'block';
+                        scanResultContent.textContent = 'Lỗi khi gọi API scan: ' + e.message;
+                    } finally {
+                        scanBtn.disabled = false;
+                        scanBtn.textContent = '📑 Lấy kết quả Scan CCCD từ ảnh đã Alignment';
+                    }
+                }
+                </script>
+                <div class="stats" id="statsSection">
+                    <h3>📈 Thống kê Chi tiết</h3>
+                    <div class="stat-grid" id="statsGrid">
+                        <!-- Stats will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let templateFile = null;
+        let targetFile = null;
+
+        function previewImage(input, previewId) {
+            const file = input.files[0];
+            const preview = document.getElementById(previewId);
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview">`;
+                }
+                reader.readAsDataURL(file);
+
+                // Store the file
+                if (input.id === 'templateFile') {
+                    templateFile = file;
+                } else {
+                    targetFile = file;
+                }
+
+                updateProcessButton();
+            }
+        }
+
+        function updateProcessButton() {
+            const processBtn = document.getElementById('processBtn');
+            if (templateFile && targetFile) {
+                processBtn.disabled = false;
+                processBtn.textContent = '🚀 Thực hiện Alignment';
+            } else {
+                processBtn.disabled = true;
+                processBtn.textContent = 'Vui lòng chọn cả 2 ảnh';
+            }
+        }
+
+        async function processImages() {
+            if (!templateFile || !targetFile) {
+                showError('Vui lòng chọn cả ảnh template và target');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('processBtn').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('image_template', templateFile);
+                formData.append('image_target', targetFile);
+
+                const response = await fetch('/api/orb', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Có lỗi xảy ra khi xử lý API');
+                }
+
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    throw new Error(result.error || 'Alignment thất bại');
+                }
+
+            } catch (error) {
+                showError('Lỗi: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('processBtn').disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            // Display images
+            document.getElementById('alignedImage').src = 'data:image/jpeg;base64,' + result.aligned_image_base64;
+            document.getElementById('visualizationImage').src = 'data:image/jpeg;base64,' + result.visualization_image_base64;
+            document.getElementById('comparisonImage').src = 'data:image/jpeg;base64,' + result.comparison_image_base64;
+
+            // Display statistics
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Quality Score</div>
+                    <div class="stat-value">${(result.quality_score * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Inlier Ratio</div>
+                    <div class="stat-value">${(result.inlier_ratio * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Base Features</div>
+                    <div class="stat-value">${result.features.base}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Target Features</div>
+                    <div class="stat-value">${result.features.target}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Good Matches</div>
+                    <div class="stat-value">${result.good_matches}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Inliers</div>
+                    <div class="stat-value">${result.inliers}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Base Scale</div>
+                    <div class="stat-value">${result.scales.base_scale.toFixed(3)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Target Scale</div>
+                    <div class="stat-value">${result.scales.target_scale.toFixed(3)}</div>
+                </div>
+            `;
+
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Drag and drop functionality
+        function setupDragAndDrop() {
+            const uploadBoxes = document.querySelectorAll('.upload-box');
+            
+            uploadBoxes.forEach(box => {
+                box.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    box.classList.add('dragover');
+                });
+
+                box.addEventListener('dragleave', () => {
+                    box.classList.remove('dragover');
+                });
+
+                box.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    box.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const fileInput = box.querySelector('input[type="file"]');
+                        fileInput.files = files;
+                        
+                        const previewId = fileInput.id === 'templateFile' ? 'templatePreview' : 'targetPreview';
+                        previewImage(fileInput, previewId);
+                    }
+                });
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDragAndDrop();
+            updateProcessButton();
+        });
+    </script>
+</body>
+</html>
