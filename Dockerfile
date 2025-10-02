@@ -1,50 +1,12 @@
-# Sử dụng Python 3.10 slim image làm base
-FROM python:3.10-slim
-
-# Set working directory
+# Stage 1: Build dependencies
+FROM python:3.10-slim AS builder
 WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Cài đặt system dependencies cần thiết cho OpenCV
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    libgthread-2.0-0 \
-    libgtk-3-0 \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libwebp-dev \
-    libhdf5-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements file
-COPY requitement.txt .
-
-# Upgrade pip và cài đặt Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requitement.txt
-
-# Copy source code
+# Stage 2: Create a lean runtime image
+FROM python:3.10-slim
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY . .
-
-# Create directories for any potential file uploads or temp files
-RUN mkdir -p /tmp/uploads
-
-# Expose port
-EXPOSE 5000
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-
-
-
-# Run the application
-CMD ["python", "main.py"]
+CMD ["python", "app.py"]
