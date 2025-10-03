@@ -1,0 +1,15 @@
+[
+  {
+    "id": 0,
+    "name": "Mặt Trước",
+    "nameEn": "Front",
+    "is_active": true
+  },
+  {
+    "id": 1,
+    "name": "Mặt Sau",
+    "nameEn": "Back",
+    "is_active": true
+  }
+  
+]

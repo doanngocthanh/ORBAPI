@@ -12,6 +12,8 @@ import json
 import os
 import traceback
 from service.orb.ORBImageAligner import ORBImageAligner
+from config import RouterConfig, MiddlewareConfig
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Multi-Engine OCR API", 
@@ -20,7 +22,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
-
+RouterConfig().include_routers(app, RouterConfig().api_dir, "src.api")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

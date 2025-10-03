@@ -462,8 +462,8 @@ if __name__ == "__main__":
     aligner = ORBImageAligner(target_dimension=800, orb_features=2000)
     
     # Thực hiện alignment (có thể truyền đường dẫn hoặc numpy array)
-    base_path = r"C:\WorkSpace\DECDM\img\base_cccd_qr.jpg"
-    target_path = r"C:\Users\0100644068\Downloads\New folder (3)\z7065551240806_9bc3b22dba7439d88d3d49b02e3f85eb.jpg"
+    base_path = r"C:\Workspace\ORBAPI\lockup\base_qr_cccd.png"
+    target_path = r"C:\Users\dntdo\Downloads\d03650f9-84f2-47fd-aa2d-b361ab1b8503.jpg"
     
     print("🚀 SIZE-NORMALIZED ORB ALIGNMENT (MEMORY ONLY)")
     print("="*50)

@@ -65,6 +65,17 @@ class VietOCRProcessor:
             image_pil = image
             img_width, img_height = image_pil.size
         
+        # Auto-detect bbox format when caller passes a polygon but leaves default
+        # (many detectors return polygon points; callers sometimes forget to set bbox_format)
+        try:
+            bf = bbox_format.lower() if isinstance(bbox_format, str) else ""
+        except Exception:
+            bf = ""
+
+        # If bbox looks like a polygon (list/tuple of 4 points), treat as polygon
+        if bf == "xyxy" and isinstance(bbox, (list, tuple)) and len(bbox) == 4 and isinstance(bbox[0], (list, tuple)):
+            bbox_format = "polygon"
+
         # Normalize bbox to polygon format
         polygon_bbox = self._normalize_bbox(bbox, bbox_format, img_width, img_height)
         

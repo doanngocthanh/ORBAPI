@@ -1,0 +1,50 @@
+[
+  {
+    "id": 0,
+    "name": "Thẻ Căn Cước Công Dân",
+    "nameEn": "Citizens Card",
+    "is_active": true
+  },
+  {
+    "id": 1,
+    "name": "Giấy Phép Lái Xe",
+    "nameEn": "Driving License",
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "name": "Thẻ Bảo Hiểm Y Tế",
+    "nameEn": "Health Insurance Card",
+    "is_active": true
+  },
+  {
+    "id": 3,
+    "name": "Thẻ Ngân Hàng",
+    "nameEn": "Bank Card",
+    "is_active": true
+  },
+  {
+    "id": 4,
+    "name": "Thẻ Sinh Viên",
+    "nameEn": "Student Card",
+    "is_active": true
+  },
+  {
+    "id": 5,
+    "name": "Thẻ Căn Cước Công Dân Mới",
+    "nameEn": "New Citizens Card",
+    "is_active": true
+  },
+  {
+    "id": 6,
+    "name": "Thẻ Căn Cước Công Dân Cũ",
+    "nameEn": "Old Citizens Card",
+    "is_active": true
+  },
+  {
+    "id": 7,
+    "name": "string",
+    "nameEn": "string",
+    "is_active": true
+  }
+]

@@ -1,0 +1,321 @@
+import os
+from fastapi import APIRouter
+from CCCDDetector import CCCDDetector
+from config import PtConfig
+from service.yolo.YOLODetector import DetectionConfig
+from fastapi import File, UploadFile
+import io
+from PIL import Image
+import numpy as np
+import json
+import uuid
+from datetime import datetime
+from typing import Dict
+
+router = APIRouter(
+    prefix="/api/scan",
+    tags=["VietNam Citizens Card Scanner"],
+    responses={
+        404: {"description": "Not found"}
+    }
+)
+
+config = DetectionConfig(
+        conf_threshold=0.25,
+        iou_threshold=0.3,
+        max_positions_per_label=1,
+        target_size=640,
+        enhance_image=False)
+
+# Lưu trữ tasks trong memory (có thể thay bằng database)
+tasks: Dict[str, dict] = {}
+
+# Tạo thư mục log nếu chưa có
+LOG_DIR = "logs/tasks"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+def save_task_to_file(task_id: str, task_data: dict):
+    """Lưu task data ra file JSON"""
+    file_path = os.path.join(LOG_DIR, f"{task_id}.json")
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(task_data, f, ensure_ascii=False, indent=2)
+
+def load_task_from_file(task_id: str) -> dict:
+    """Đọc task data từ file JSON"""
+    file_path = os.path.join(LOG_DIR, f"{task_id}.json")
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+@router.post("/")
+async def scan_card(file: UploadFile = File(...)):
+    import time
+    import cv2
+    
+    # Tạo UUID cho request
+    task_id = str(uuid.uuid4())
+    start_time = time.time()
+    start_timestamp = datetime.now()
+    
+    # Khởi tạo task log
+    task_data = {
+        "id": task_id,
+        "status": "processing",
+        "created_at": start_timestamp.isoformat(),
+        "filename": file.filename
+    }
+    tasks[task_id] = task_data
+    
+    try:
+        # Read the uploaded file
+        contents = await file.read()
+        original_size = len(contents)
+        
+        # Convert to PIL Image
+        image = Image.open(io.BytesIO(contents))
+        width, height = image.size
+        img_format = image.format or "JPEG"
+        
+        # Calculate image quality metrics
+        img_array = np.array(image)
+        if len(img_array.shape) == 3:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_array
+        
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        brightness = gray.mean()
+        contrast = gray.std()
+        
+        # Calculate quality score (0-100)
+        quality_score = min(100, (blur_score / 5) + (contrast / 2))
+        
+        image_quality = {
+            "original_size": original_size,
+            "load_method": "PIL",
+            "format": img_format,
+            "quality_score": round(quality_score, 2),
+            "width": width,
+            "height": height,
+            "blur_score": round(blur_score, 2),
+            "brightness": round(brightness, 2),
+            "contrast": round(contrast, 2)
+        }
+        
+        # Save the uploaded image temporarily
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            image.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        # Initialize detector with config
+        pt_config = PtConfig()
+        cccd_detector = CCCDDetector(pt_config.get_model("CCCD_FACE_DETECT_2025_NEW_TITLE"), config)
+        
+        # Detect card from the image
+        detection_result = cccd_detector.process_image(temp_path)
+        print(f"Detection result: {detection_result}")
+        print(f"Task ID: {task_id}")
+        
+        # Initialize result structure
+        ocr_data = {
+            "id": "",
+            "name": "",
+            "birth": "",
+            "sex": "",
+            "nationality": "",
+            "place_of_origin": "",
+            "place_of_residence": "",
+            "expiry": ""
+        }
+        
+        card_ocr_results = {
+            "full_name": "",
+            "id_number": "",
+            "date_of_birth": "",
+            "sex": "",
+            "nationality": "",
+            "place_of_origin": "",
+            "place_of_residence": "",
+            "expiry": "",
+            "portrait": "",
+            "qr_code": "",
+            "day": "",
+            "month": "",
+            "year": ""
+        }
+        
+        detections = detection_result.get('detections', [])
+        
+        if detections:
+            item = detections[0]
+            detected_label = item.get('detected_label')
+            print(f"Detected label: {detected_label}")
+            
+            # Add image quality to detection result
+            item['image_quality'] = image_quality
+            
+            if detected_label in ['cccd_qr_front', 'cccd_qr_back']:
+                from OCR_CCCD_QR import OCR_CCCD_QR
+                ocr_processor = OCR_CCCD_QR(face=detected_label)
+                ocr_result = ocr_processor.process_image(temp_path)
+                
+                # Map OCR results
+                ocr_data = {
+                    "id": ocr_result.get("id", ""),
+                    "name": ocr_result.get("name", ""),
+                    "birth": ocr_result.get("birth", ""),
+                    "sex": ocr_result.get("sex", ""),
+                    "nationality": ocr_result.get("nationality", ""),
+                    "place_of_origin": ocr_result.get("place_of_origin", ""),
+                    "place_of_residence": ocr_result.get("place_of_residence", ""),
+                    "expiry": ocr_result.get("expiry", "")
+                }
+                
+                card_ocr_results = {
+                    "full_name": ocr_result.get("name", ""),
+                    "id_number": ocr_result.get("id", ""),
+                    "date_of_birth": ocr_result.get("birth", ""),
+                    "sex": ocr_result.get("sex", ""),
+                    "nationality": ocr_result.get("nationality", ""),
+                    "place_of_origin": ocr_result.get("place_of_origin", ""),
+                    "place_of_residence": ocr_result.get("place_of_residence", ""),
+                    "expiry": ocr_result.get("expiry", ""),
+                    "portrait": "",
+                    "qr_code": "",
+                    "day": "",
+                    "month": "",
+                    "year": ""
+                }
+                
+            elif detected_label in ['cccd_new_front', 'cccd_new_back', 'cccd_old_front', 'cccd_old_back']:
+                from OCR_CCCD_2025 import OCR_CCCD_2025
+                ocr_processor = OCR_CCCD_2025()
+                ocr_result = ocr_processor.process_image(temp_path)
+                
+                # Map OCR results (adjust based on OCR_CCCD_2025 output structure)
+                if isinstance(ocr_result, dict):
+                    ocr_data = {
+                        "id": ocr_result.get("id", ""),
+                        "name": ocr_result.get("name", ""),
+                        "birth": ocr_result.get("birth", ""),
+                        "sex": ocr_result.get("sex", ""),
+                        "nationality": ocr_result.get("nationality", ""),
+                        "place_of_origin": ocr_result.get("place_of_origin", ""),
+                        "place_of_residence": ocr_result.get("place_of_residence", ""),
+                        "expiry": ocr_result.get("expiry", "")
+                    }
+                    
+                    card_ocr_results.update({
+                        "full_name": ocr_result.get("name", ""),
+                        "id_number": ocr_result.get("id", ""),
+                        "date_of_birth": ocr_result.get("birth", ""),
+                        "sex": ocr_result.get("sex", ""),
+                        "nationality": ocr_result.get("nationality", ""),
+                        "place_of_origin": ocr_result.get("place_of_origin", ""),
+                        "place_of_residence": ocr_result.get("place_of_residence", ""),
+                        "expiry": ocr_result.get("expiry", "")
+                    })
+        
+        # Clean up temp file
+        os.unlink(temp_path)
+        
+        # Calculate timing
+        end_time = time.time()
+        end_timestamp = datetime.now()
+        elapsed_time = round(end_time - start_time, 3)
+        
+        # Build final response structure
+        response = {
+            "status": "completed",
+            "message": "Image processed successfully",
+            "task_id": task_id,
+            "timing": {
+                "start_time": start_time,
+                "end_time": end_time,
+                "start_timestamp": start_timestamp.isoformat(),
+                "end_timestamp": end_timestamp.isoformat(),
+                "total_elapsed_time": elapsed_time
+            },
+            "image_info": image_quality,
+            "results": {
+                "processing_time_sec": elapsed_time,
+                "results": [ocr_data]
+            },
+            "details": [
+                {
+                    "card_info": {
+                        "detections": detections,
+                        "image_quality": image_quality,
+                        "debug_info": {
+                            "total_detections": len(detections),
+                            "ocr_detections": len([d for d in detections if d.get('detected_label') not in ['portrait', 'qr_code']]),
+                            "detected_types": [d.get('detected_label') for d in detections],
+                            "sex_detected": any(d.get('detected_label') == 'sex' for d in detections),
+                            "sex_confidence": next((d.get('confidence', 0) for d in detections if d.get('detected_label') == 'sex'), 0)
+                        }
+                    },
+                    "card_ocr_results": card_ocr_results,
+                    "timing": {},
+                    "ocr_fields_count": sum(1 for v in card_ocr_results.values() if v),
+                    "ocr_fields_total": len(card_ocr_results)
+                }
+            ],
+            "mrz_result": {
+                "status": "no_mrz_detected",
+                "message": "No MRZ regions detected in the image.",
+                "texts": [],
+                "mrz_string": "",
+                "mrz_length": 0,
+                "total_mrz_regions": 0,
+                "dates_found": [],
+                "total_dates": 0
+            },
+            "start_time": start_time,
+            "elapsed_time": elapsed_time
+        }
+        
+        task_data["status"] = "completed"
+        task_data["result"] = response
+        tasks[task_id] = task_data
+        save_task_to_file(task_id, task_data)
+        
+        return response
+        
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        
+        end_time = time.time()
+        elapsed_time = round(end_time - start_time, 3)
+        
+        error_response = {
+            "status": "error",
+            "message": str(e),
+            "task_id": task_id,
+            "error_detail": error_detail,
+            "elapsed_time": elapsed_time
+        }
+        
+        task_data["status"] = "error"
+        task_data["error"] = str(e)
+        task_data["error_detail"] = error_detail
+        tasks[task_id] = task_data
+        save_task_to_file(task_id, task_data)
+        
+        return error_response
+    
+
+@router.get("/tasks/{task_id}")
+async def get_task_status(task_id: str):
+    # Kiểm tra trong memory trước
+    if task_id in tasks:
+        return tasks[task_id]
+    
+    # Nếu không có trong memory, đọc từ file
+    task_data = load_task_from_file(task_id)
+    if task_data:
+        return task_data
+    
+    return {"error": "Task not found"}, 404
