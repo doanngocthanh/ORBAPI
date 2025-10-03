@@ -1,0 +1,13 @@
+fastapi
+python-multipart
+uvicorn
+vietocr
+opencv-python
+onnxruntime
+pyclipper
+torch
+torchvision
+numpy 
+matplotlib
+rembg
+ultralytics

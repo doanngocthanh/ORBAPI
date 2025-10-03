@@ -1,102 +1,62 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-import cv2
-import numpy as np
-import base64
-from service.orb.ORBImageAligner import ORBImageAligner
-import uvicorn
 import os
-from fastapi.middleware.cors import CORSMiddleware
+from argparse import ArgumentParser
+from warnings import filterwarnings
+import sys
 
-app = FastAPI(title="ORB Image Alignment API", version="1.0.0")
-aligner = ORBImageAligner(target_dimension=800, orb_features=2000)
+import cv2
+import numpy
 
-def read_image_from_upload(file: UploadFile):
-    file_bytes = file.file.read()
-    img_array = np.frombuffer(file_bytes, np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-    return img
+from nets import nn
+from utils import util
 
-def encode_image_to_base64(image):
-    """Convert numpy image to base64 string"""
-    _, buffer = cv2.imencode('.jpg', image)
-    img_base64 = base64.b64encode(buffer).decode('utf-8')
-    return img_base64
+filterwarnings("ignore")
 
-def convert_numpy_types(obj):
-    """Recursively convert numpy types to native Python types"""
-    if isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, dict):
-        return {key: convert_numpy_types(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_numpy_types(item) for item in obj]
-    elif isinstance(obj, tuple):
-        return tuple(convert_numpy_types(item) for item in obj)
-    else:
-        return obj
 
-def prepare_response(result):
-    """Convert ORB alignment result to JSON-serializable format"""
-    if not result["success"]:
-        return result
-    
-    # Convert numpy arrays to base64 encoded images
-    response = {
-        "success": True,
-        "aligned_image_base64": encode_image_to_base64(result["aligned_image"]),
-        "visualization_image_base64": encode_image_to_base64(result["visualization_image"]),
-        "comparison_image_base64": encode_image_to_base64(result["comparison_image"]),
-        "original_sizes": {
-            "base": list(result["original_sizes"]["base"]),
-            "target": list(result["original_sizes"]["target"])
-        },
-        "normalized_sizes": {
-            "base": list(result["normalized_sizes"]["base"]),
-            "target": list(result["normalized_sizes"]["target"])
-        },
-        "features": convert_numpy_types(result["features"]),
-        "good_matches": convert_numpy_types(result["good_matches"]),
-        "inliers": convert_numpy_types(result["inliers"]),
-        "inlier_ratio": float(result["inlier_ratio"]),
-        "quality_score": float(result["quality_score"]),
-        "homography_matrix": result["homography_matrix"].tolist(),
-        "scales": {
-            "base_scale": float(result["scales"]["base_scale"]),
-            "target_scale": float(result["scales"]["target_scale"])
-        }
-    }
-    return response
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
-@app.post('/api/orb')
-async def orb(image_template: UploadFile = File(...), image_target: UploadFile = File(...)):
-    try:
-        template_img = read_image_from_upload(image_template)
-        target_img = read_image_from_upload(image_target)
-        result = aligner.align(template_img, target_img)
-        json_result = prepare_response(result)
-        return json_result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/")
-def read_root():
-    # Serve the HTML file
-    with open("index.html", "r", encoding="utf-8") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content)
+detection = nn.Detection(resource_path('weights/detection.onnx'))
+recognition = nn.Recognition(resource_path('weights/recognition.onnx'))
+classification = nn.Classification(resource_path('weights/classification.onnx'))
 
-app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-)
+
+def main():
+    # parser = ArgumentParser()
+    # parser.add_argument('filepath', type=str, help='image file path')
+
+    # args = parser.parse_args()
+
+    frame = cv2.imread(r"C:\WorkSpace\2_AI\OCR\Padlet\PaddleOCR-onnx\New folder\z6848230672895_ffa1a25eea1f3fb97c78bd083c74869e.jpg")
+    image = frame.copy()
+
+    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB, frame)  # inplace
+
+    points = detection(frame)
+    points = util.sort_polygon(list(points))
+
+    # draw detected polygon
+    for point in points:
+        point = numpy.array(point, dtype=numpy.int32)
+        cv2.polylines(image,
+                      [point], True,
+                      (0, 255, 0), 2)
+
+    cropped_images = [util.crop_image(frame, x) for x in points]
+    cropped_images, angles = classification(cropped_images)
+    results, confidences = recognition(cropped_images)
+
+    # draw recognized text
+    for i, result in enumerate(results):
+        point = points[i]
+        x, y, w, h = cv2.boundingRect(point)
+        image = cv2.putText(image, result, (int(x), int(y - 2)), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.4, (200, 200, 0), 1, cv2.LINE_AA)
+  
+    print(results)
+
+
 if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    main()
