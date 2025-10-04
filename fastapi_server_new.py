@@ -1,3 +1,7 @@
+import os
+os.environ['NNPACK_WARN'] = '0'  # Suppress NNPACK warnings
+import warnings
+warnings.filterwarnings('ignore')  # Suppress other warnings
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -612,4 +616,4 @@ if __name__ == "__main__":
     print("  - Health Check:  http://localhost:8000/health")
     print("=" * 60)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=5555, log_level="info")

@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter
-from CCCDDetector import CCCDDetector
+from service.detect.CCCDDetector import CCCDDetector
 from config import PtConfig
 from service.yolo.YOLODetector import DetectionConfig
 from fastapi import File, UploadFile

@@ -1,7 +1,7 @@
 import os
 from urllib import response
 from fastapi import APIRouter
-from CCCDDetector import CCCDDetector
+from service.detect.CCCDDetector import CCCDDetector
 from config import PtConfig
 from service.yolo.YOLODetector import DetectionConfig
 from fastapi import File, UploadFile
@@ -170,7 +170,7 @@ async def scan_card(file: UploadFile = File(...)):
             item['image_quality'] = image_quality
             
             if detected_label in ['cccd_qr_front', 'cccd_qr_back']:
-                from OCR_CCCD_QR import OCR_CCCD_QR
+                from service.card.OCR_CCCD_QR import OCR_CCCD_QR
                 ocr_processor = OCR_CCCD_QR(face=detected_label)
                 ocr_result = ocr_processor.process_image(temp_path)
                 
@@ -204,7 +204,7 @@ async def scan_card(file: UploadFile = File(...)):
                 print(f"OCR result for {detected_label}: {ocr_result}")
                 
             elif detected_label in ['cccd_new_front', 'cccd_new_back']:
-                from OCR_CCCD_2025_NEW import OCR_CCCD_2025_NEW
+                from service.card.OCR_CCCD_2025_NEW import OCR_CCCD_2025_NEW
                 ocr_processor = OCR_CCCD_2025_NEW()
                
                 ocr_result = ocr_processor.process_image(temp_path)

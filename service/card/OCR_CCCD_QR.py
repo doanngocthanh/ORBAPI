@@ -6,7 +6,7 @@ import json
 import numpy as np
 import cv2
 from PIL import Image
-class OCR_CCCD_2025_NEW:
+class OCR_CCCD_QR:
     def __init__(self,face=None):
         self.config = DetectionConfig(
             conf_threshold=0.25,
@@ -27,10 +27,11 @@ class OCR_CCCD_2025_NEW:
         self.image_base_config = ImageBaseConfig()
         self.viet_ocr_processor = VietOCRProcessor()
         self.paddleocr = PaddleOCRProcessor(weights_dir=self.weights_config.getdir())
-        self.model = YOLODetector(self.ptconfig.get_model("OCR_CCCD_2025"), self.config)
-        self.mrz = YOLODetector(self.ptconfig.get_model("MRZ"), self.config_mrz)      
-        self.image_front = self.image_base_config.get_image("base_cccd_new")
-        #self.image_back = self.image_base_config.get_image("base_qr_cccd_back")
+        self.model = YOLODetector(self.ptconfig.get_model("OCR_QR_CCCD"), self.config)
+        self.mrz = YOLODetector(self.ptconfig.get_model("MRZ"), self.config_mrz)
+        
+        self.image_front = self.image_base_config.get_image("base_qr_cccd")
+       
     
     def crop_black_padding(self, aligned_image):
         """
@@ -187,7 +188,8 @@ class OCR_CCCD_2025_NEW:
         final_image_for_ocr = image_path
         
         missing_detections = self.model.get_total_classes() - expected_detections
-        if missing_detections > 3:
+        print(f"Missing detections: {missing_detections}")
+        if missing_detections >= 3:
             # Re-detect using ORB if missing more than 3 fields
             print(f"Missing {missing_detections} detections, re-detecting with ORB...")
             from service.orb.ORBImageAligner import ORBImageAligner
@@ -332,7 +334,7 @@ class OCR_CCCD_2025_NEW:
         for detection in result:
             print(detection)
             class_name = detection.class_name
-            if class_name not in ['portrait', 'top_right', 'bottom_right', 'bottom_left', 'top_left',"Sex","ID","Name","Date_of_birth","Nationality",'Date of expirty','Date of issue',"Place","Place of birth"]:
+            if class_name not in ['portrait', 'qr_code']:
                 citizens_card_data[class_name] = self.viet_ocr_processor.process_bbox(
                     final_image_for_ocr, detection.bbox
                 ).get("text", "")
@@ -340,8 +342,8 @@ class OCR_CCCD_2025_NEW:
         return citizens_card_data
 
 if __name__ == "__main__":
-    ocr_processor = OCR_CCCD_2025_NEW()
-    image = r"C:\Users\dntdo\Downloads\DataSetSource\OCR_CCCD.v4i.yolov8 (1)\train\images\20039138_01JCZNF6FBSXV9311RJRX16Q0E743517_back_jpg.rf.45b539b51f9cb527147fdb2ac0889e9d.jpg"
+    ocr_processor = OCR_CCCD_QR()
+    image = r"C:\Users\dntdo\Downloads\CCCD.v1i.yolov8\train\images\20036691_01JCN139KJJB2MWQRBYYNRK6D9490503_back_jpg.rf.e49b533f12297e80a42a705e1fffc5d9.jpg"
     # Test MRZ detection with debugging
     print("\n=== Testing MRZ Detection ===")
     mrz_result = ocr_processor.process_mrz(image)
