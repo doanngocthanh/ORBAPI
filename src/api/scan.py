@@ -12,6 +12,7 @@ import json
 import uuid
 from datetime import datetime
 from typing import Dict
+from service.utils.ImageUploadHandler import ImageUploadHandler
 
 router = APIRouter(
     prefix="/api/scan",
@@ -48,8 +49,8 @@ def load_task_from_file(task_id: str) -> dict:
         with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     return None
-
-@router.post("/")
+@router.post("/", status_code=200)
+@router.post("", status_code=200, include_in_schema=False)
 async def scan_card(image_file: UploadFile = File(...)):
     import time
     import cv2
@@ -71,44 +72,34 @@ async def scan_card(image_file: UploadFile = File(...)):
     try:
         # Read the uploaded file
         contents = await file.read()
-        original_size = len(contents)
         
-        # Convert to PIL Image
-        image = Image.open(io.BytesIO(contents))
-        width, height = image.size
-        img_format = image.format or "JPEG"
+        # Process image with handler
+        image_handler = ImageUploadHandler(auto_convert_to_rgb=True)
+        upload_result = image_handler.process_upload(
+            contents,
+            save_temp=True,
+            format='JPEG',
+            calculate_metrics=True
+        )
         
-        # Calculate image quality metrics
-        img_array = np.array(image)
-        if len(img_array.shape) == 3:
-            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-        else:
-            gray = img_array
+        image = upload_result['image']
+        temp_path = upload_result['temp_path']
         
-        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
-        brightness = gray.mean()
-        contrast = gray.std()
-        
-        # Calculate quality score (0-100)
-        quality_score = min(100, (blur_score / 5) + (contrast / 2))
-        
+        # Build image quality info
         image_quality = {
-            "original_size": original_size,
-            "load_method": "PIL",
-            "format": img_format,
-            "quality_score": round(quality_score, 2),
-            "width": width,
-            "height": height,
-            "blur_score": round(blur_score, 2),
-            "brightness": round(brightness, 2),
-            "contrast": round(contrast, 2)
+            "original_size": len(contents),
+            "load_method": "ImageUploadHandler",
+            "format": upload_result['info']['original_format'],
+            "original_mode": upload_result['info']['original_mode'],
+            "final_mode": upload_result['info']['final_mode'],
+            "converted": upload_result['info']['converted'],
+            "width": upload_result['info']['width'],
+            "height": upload_result['info']['height'],
+            "quality_score": upload_result['metrics']['quality_score'],
+            "blur_score": upload_result['metrics']['blur_score'],
+            "brightness": upload_result['metrics']['brightness'],
+            "contrast": upload_result['metrics']['contrast']
         }
-        
-        # Save the uploaded image temporarily
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-            image.save(tmp_file.name)
-            temp_path = tmp_file.name
         
         # Initialize detector with config
         pt_config = PtConfig()
@@ -249,7 +240,7 @@ async def scan_card(image_file: UploadFile = File(...)):
                     })
         
         # Clean up temp file
-        os.unlink(temp_path)
+        image_handler.cleanup_temp(temp_path)
         
         # Calculate timing
         end_time = time.time()

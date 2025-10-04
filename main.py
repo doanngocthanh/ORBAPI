@@ -51,7 +51,7 @@ viet_ocr_processor = None
 # Try to initialize PaddleOCR
 try:
     from service.ocr.PaddletOCRApi import PaddleOCRProcessor
-    paddle_ocr_processor = PaddleOCRProcessor(weights_dir='weights')
+    paddle_ocr_processor = PaddleOCRProcessor(weights_dir='weights') 
     PADDLEOCR_AVAILABLE = True
     print("✓ PaddleOCR Engine initialized successfully!")
 except Exception as e:

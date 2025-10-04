@@ -7,13 +7,8 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from service.statistics.TaskStatistics import TaskStatistics, save_daily_statistics
-# Import directly from the module file
-import sys
-import os
-# Add parent directory to path if needed
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from TaskStatistics import TaskStatistics, save_daily_statistics 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

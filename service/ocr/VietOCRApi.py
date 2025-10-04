@@ -14,11 +14,23 @@ class VietOCRProcessor:
     """
     def __init__(self, config=None):
         if config is None:
-            # Sử dụng proxy nếu cần
-            os.environ['http_proxy'] = 'http://thanhdn2:thanhdn2!@116.118.47.171:3128'
-            os.environ['https_proxy'] = 'http://thanhdn2:thanhdn2!@116.118.47.171:3128'
+            # Load config from local file to avoid downloading
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                'config',
+                'vietocr_config.yml'
+            )
             
-            config = Cfg.load_config_from_name('vgg_transformer')
+            # Check if local config exists
+            if os.path.exists(config_path):
+                print(f"Loading VietOCR config from: {config_path}")
+                config = Cfg.load_config_from_file(config_path)
+            else:
+                # Fallback to default config (will download)
+                print("Local config not found, using default vgg_transformer config")
+                config = Cfg.load_config_from_name('vgg_transformer')
+            
+            # Override settings to avoid downloading pretrained weights
             config['cnn']['pretrained'] = False
             config['device'] = 'cpu'
         
