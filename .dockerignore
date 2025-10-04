@@ -1,0 +1,84 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+*.pid
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Models (comment out if you want to include in image)
+# models/
+# weights/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker
+.dockerignore
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Config files (might contain secrets)
+.env
+.env.local
+*.pem
+*.key
+
+# Large image datasets
+images/*.jpg
+images/*.png
+images/*.jpeg
+!images/.gitkeep
+
+# Backup files
+*.bak
+*.backup
+
+# Development files
+test_*.py
+*_test.py
+experiments/
+notebooks/

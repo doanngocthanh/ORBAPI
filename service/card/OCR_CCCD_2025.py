@@ -1,6 +1,6 @@
 from service.yolo.YOLODetector import YOLODetector, DetectionConfig
 from config import PtConfig
-from VietOCRApi import VietOCRProcessor
+from service.ocr.VietOCRApi import VietOCRProcessor
 import json
 
 class OCR_CCCD_2025:

@@ -50,10 +50,10 @@ def load_task_from_file(task_id: str) -> dict:
     return None
 
 @router.post("/")
-async def scan_card(file: UploadFile = File(...)):
+async def scan_card(image_file: UploadFile = File(...)):
     import time
     import cv2
-    
+    file = image_file
     # Tạo UUID cho request
     task_id = str(uuid.uuid4())
     start_time = time.time()
@@ -198,8 +198,13 @@ async def scan_card(file: UploadFile = File(...)):
                 
                 # Process MRZ for back side only
                 if 'back' in detected_label:
-                    mrz_result = ocr_processor.process_mrz(temp_path)
-                    print(f"MRZ result for {detected_label}: {mrz_result}")
+                    from service.MRZExtractor import MRZExtractor
+                
+                    # Initialize MRZ extractor service
+                    mrz_extractor = MRZExtractor()
+                    
+                    # Extract MRZ using service
+                    mrz_result = mrz_extractor.extract_mrz_from_bytes(contents)
                   
                 print(f"OCR result for {detected_label}: {ocr_result}")
                 
@@ -210,9 +215,12 @@ async def scan_card(file: UploadFile = File(...)):
                 ocr_result = ocr_processor.process_image(temp_path)
                 
                 # Process MRZ for back side only
+               
                 if 'back' in detected_label:
-                    mrz_result = ocr_processor.process_mrz(temp_path)
-                    print(f"MRZ result for {detected_label}: {mrz_result}")
+                        from service.MRZExtractor import MRZExtractor
+                        mrz_extractor = MRZExtractor()
+                        # Extract MRZ using service
+                        mrz_result = mrz_extractor.extract_mrz_from_bytes(contents)
 
                 print(f"OCR result for {detected_label}: {ocr_result}")
                 # Map OCR results (adjust based on OCR_CCCD_2025 output structure)

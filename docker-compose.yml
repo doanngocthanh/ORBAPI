@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  ocr-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orbapi-ocr-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount models directory (optional - for easy model updates)
+      - ./models:/app/models:ro
+      # Mount lockup templates (optional)
+      - ./lockup:/app/lockup:ro
+      # Mount weights (optional)
+      - ./weights:/app/weights:ro
+      # Mount logs for persistence
+      - ./logs:/app/logs
+      # Mount uploaded images (optional)
+      - ./images:/app/images
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NNPACK_WARN=0
+      - TZ=Asia/Ho_Chi_Minh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ocr-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+networks:
+  ocr-network:
+    driver: bridge
+
+volumes:
+  ocr-logs:
+    driver: local

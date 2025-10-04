@@ -1,7 +1,7 @@
 from service.yolo.YOLODetector import YOLODetector, DetectionConfig
 from config import PtConfig, ImageBaseConfig, WeightsConfig
-from VietOCRApi import VietOCRProcessor
-from PaddletOCRApi import PaddleOCRProcessor
+from service.ocr.VietOCRApi import VietOCRProcessor
+from service.ocr.PaddletOCRApi import PaddleOCRProcessor
 import json
 import numpy as np
 import cv2

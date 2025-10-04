@@ -12,3 +12,4 @@ matplotlib
 rembg
 ultralytics
 unidecode
+apscheduler

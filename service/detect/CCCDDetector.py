@@ -1,7 +1,7 @@
 from service.yolo.YOLODetector import YOLODetector, DetectionConfig
 import os
 import json
-from CardService import CardService, CardSideService
+from service.card.CardService import CardService, CardSideService
 
 class CCCDDetector:
     # Mapping detected labels to card categories and types
@@ -33,7 +33,7 @@ class CCCDDetector:
     def _init_ocr_processors(self):
         """Lazy initialization of OCR processors"""
         if self.paddle_ocr_processor is None:
-            from PaddletOCRApi import PaddleOCRProcessor
+            from service.ocr.PaddletOCRApi import PaddleOCRProcessor
             self.paddle_ocr_processor = PaddleOCRProcessor(weights_dir=self.weights_dir)
       
     

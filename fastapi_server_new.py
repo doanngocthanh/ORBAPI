@@ -50,7 +50,7 @@ viet_ocr_processor = None
 
 # Try to initialize PaddleOCR
 try:
-    from PaddletOCRApi import PaddleOCRProcessor
+    from service.ocr.PaddletOCRApi import PaddleOCRProcessor
     paddle_ocr_processor = PaddleOCRProcessor(weights_dir='weights')
     PADDLEOCR_AVAILABLE = True
     print("✓ PaddleOCR Engine initialized successfully!")
@@ -60,7 +60,7 @@ except Exception as e:
 
 # Try to initialize VietOCR
 try:
-    from VietOCRApi import VietOCRProcessor
+    from service.ocr.VietOCRApi import VietOCRProcessor
     viet_ocr_processor = VietOCRProcessor()
     VIETOCR_AVAILABLE = True
     print("✓ VietOCR Engine initialized successfully!")
