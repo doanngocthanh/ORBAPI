@@ -176,7 +176,7 @@ cython_debug/
 # Model directories
 # .local/
 # models/
-weights/
+#weights/
 checkpoints/
 
 # Temporary files
