@@ -1,4 +1,5 @@
 import os
+from urllib import response
 from fastapi import APIRouter
 from CCCDDetector import CCCDDetector
 from config import PtConfig
@@ -148,6 +149,18 @@ async def scan_card(file: UploadFile = File(...)):
         
         detections = detection_result.get('detections', [])
         
+        # Initialize response structure early to avoid UnboundLocalError
+        response = {
+            "status": "processing",
+            "message": "Image processing in progress",
+            "task_id": task_id,
+            "timing": {},
+            "image_info": image_quality,
+            "results": {},
+            "details": [],
+            "mrz_result": {}
+        }
+        mrz_result = None
         if detections:
             item = detections[0]
             detected_label = item.get('detected_label')
@@ -181,41 +194,50 @@ async def scan_card(file: UploadFile = File(...)):
                     "nationality": ocr_result.get("nationality", ""),
                     "place_of_origin": ocr_result.get("place_of_origin", ""),
                     "place_of_residence": ocr_result.get("place_of_residence", ""),
-                    "expiry": ocr_result.get("expiry", ""),
-                    "portrait": "",
-                    "qr_code": "",
-                    "day": "",
-                    "month": "",
-                    "year": ""
                 }
                 
-            elif detected_label in ['cccd_new_front', 'cccd_new_back', 'cccd_old_front', 'cccd_old_back']:
-                from OCR_CCCD_2025 import OCR_CCCD_2025
-                ocr_processor = OCR_CCCD_2025()
+                # Process MRZ for back side only
+                if 'back' in detected_label:
+                    mrz_result = ocr_processor.process_mrz(temp_path)
+                    print(f"MRZ result for {detected_label}: {mrz_result}")
+                  
+                print(f"OCR result for {detected_label}: {ocr_result}")
+                
+            elif detected_label in ['cccd_new_front', 'cccd_new_back']:
+                from OCR_CCCD_2025_NEW import OCR_CCCD_2025_NEW
+                ocr_processor = OCR_CCCD_2025_NEW()
+               
                 ocr_result = ocr_processor.process_image(temp_path)
                 
+                # Process MRZ for back side only
+                if 'back' in detected_label:
+                    mrz_result = ocr_processor.process_mrz(temp_path)
+                    print(f"MRZ result for {detected_label}: {mrz_result}")
+
+                print(f"OCR result for {detected_label}: {ocr_result}")
                 # Map OCR results (adjust based on OCR_CCCD_2025 output structure)
                 if isinstance(ocr_result, dict):
                     ocr_data = {
-                        "id": ocr_result.get("id", ""),
-                        "name": ocr_result.get("name", ""),
-                        "birth": ocr_result.get("birth", ""),
-                        "sex": ocr_result.get("sex", ""),
-                        "nationality": ocr_result.get("nationality", ""),
-                        "place_of_origin": ocr_result.get("place_of_origin", ""),
-                        "place_of_residence": ocr_result.get("place_of_residence", ""),
-                        "expiry": ocr_result.get("expiry", "")
+                        "id": ocr_result.get("c_id", ""),
+                        "name": ocr_result.get("c_full_name", ""),
+                        "birth": ocr_result.get("cdate_of_birth", ""),
+                        "sex": ocr_result.get("c_sex", ""),
+                        "nationality": ocr_result.get("c_national", ""),
+                        "place_of_origin": ocr_result.get("cplace_of_birth", ""),
+                        "place_of_residence": ocr_result.get("address_1", "")+" "+ocr_result.get("address_2", ""),
+                        "expiry": ocr_result.get("cdate_of_expiry", "")
                     }
                     
                     card_ocr_results.update({
-                        "full_name": ocr_result.get("name", ""),
-                        "id_number": ocr_result.get("id", ""),
-                        "date_of_birth": ocr_result.get("birth", ""),
-                        "sex": ocr_result.get("sex", ""),
-                        "nationality": ocr_result.get("nationality", ""),
-                        "place_of_origin": ocr_result.get("place_of_origin", ""),
-                        "place_of_residence": ocr_result.get("place_of_residence", ""),
-                        "expiry": ocr_result.get("expiry", "")
+                        "full_name": ocr_result.get("c_full_name", ""),
+                        "id_number": ocr_result.get("c_id", ""),
+                        "date_of_birth": ocr_result.get("cdate_of_birth", ""),
+                        "sex": ocr_result.get("c_sex", ""),
+                        "nationality": ocr_result.get("c_national", ""),
+                        "place_of_origin": ocr_result.get("cplace_of_birth", ""),
+                        "place_of_residence": ocr_result.get("address_1", "")+" "+ocr_result.get("address_2", ""),
+                        "expiry": ocr_result.get("cdate_of_expiry", ""),
+                        "date_of_issue": ocr_result.get("cdate_of_issue", "")
                     })
         
         # Clean up temp file
@@ -223,14 +245,13 @@ async def scan_card(file: UploadFile = File(...)):
         
         # Calculate timing
         end_time = time.time()
-        end_timestamp = datetime.now()
         elapsed_time = round(end_time - start_time, 3)
+        end_timestamp = datetime.now()
         
-        # Build final response structure
-        response = {
+        # Update final response structure
+        response.update({
             "status": "completed",
             "message": "Image processed successfully",
-            "task_id": task_id,
             "timing": {
                 "start_time": start_time,
                 "end_time": end_time,
@@ -238,7 +259,6 @@ async def scan_card(file: UploadFile = File(...)):
                 "end_timestamp": end_timestamp.isoformat(),
                 "total_elapsed_time": elapsed_time
             },
-            "image_info": image_quality,
             "results": {
                 "processing_time_sec": elapsed_time,
                 "results": [ocr_data]
@@ -262,7 +282,7 @@ async def scan_card(file: UploadFile = File(...)):
                     "ocr_fields_total": len(card_ocr_results)
                 }
             ],
-            "mrz_result": {
+            "mrz_result": mrz_result if mrz_result else {
                 "status": "no_mrz_detected",
                 "message": "No MRZ regions detected in the image.",
                 "texts": [],
@@ -274,7 +294,7 @@ async def scan_card(file: UploadFile = File(...)):
             },
             "start_time": start_time,
             "elapsed_time": elapsed_time
-        }
+        })
         
         task_data["status"] = "completed"
         task_data["result"] = response

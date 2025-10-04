@@ -45,6 +45,13 @@ class PtConfig:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model {name} not found at {model_path}")
         return model_path
+class WeightsConfig:
+    def __init__(self):
+        self.weights_path = os.path.join(os.path.dirname(__file__), "weights")
+        print(f"Model weights path set to: {self.weights_path}")
+    
+    def getdir(self):
+        return self.weights_path
 class ImageBaseConfig:
     def __init__(self):
         self.weights_path = os.path.join(os.path.dirname(__file__), "lockup")
